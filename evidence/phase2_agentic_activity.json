@@ -1,0 +1,223 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Phase 2 agentic activity evidence bundle. Synthetic telemetry derived from the agent-security-lab workflow. No secrets, credentials, cookies, tokens, or real customer data are present. All timestamps are representative ISO 8601 UTC values.",
+  "_derivable_from": "Audit log lines emitted by authorization_policy.check_authorization() and each gateway (publish_gateway.py, read_gateway.py, demo_marker_gateway.py). This bundle restructures those log fields into a machine-readable format.",
+
+  "events": [
+    {
+      "event_id": "evt-001",
+      "timestamp": "2025-01-01T10:00:00Z",
+      "agent_id": "banking-publisher",
+      "user_id": null,
+      "tool": "publish_package",
+      "action": "publish_package",
+      "repository": "fake-artifactory-local",
+      "package_name": "agent-request",
+      "target_resource": "fake-artifactory-local",
+      "authorization_decision": "ALLOW",
+      "outcome": "SUCCESS",
+      "notes": "banking-publisher is the ONLY agent authorized to publish to fake-artifactory-local. Policy entry: (banking-publisher, publish_package, fake-artifactory-local) -> ALLOW"
+    },
+    {
+      "event_id": "evt-002",
+      "timestamp": "2025-01-01T10:01:00Z",
+      "agent_id": "banking-reader",
+      "user_id": null,
+      "tool": "read_package",
+      "action": "read_package",
+      "repository": "fake-artifactory-local",
+      "package_name": "agent-request",
+      "target_resource": "fake-artifactory-local",
+      "authorization_decision": "ALLOW",
+      "outcome": "SUCCESS",
+      "notes": "banking-reader is the ONLY agent authorized to read from fake-artifactory-local. Policy entry: (banking-reader, read_package, fake-artifactory-local) -> ALLOW"
+    },
+    {
+      "event_id": "evt-003",
+      "timestamp": "2025-01-01T10:02:00Z",
+      "agent_id": "banking-reader",
+      "user_id": null,
+      "tool": "create_demo_marker",
+      "action": "create_demo_marker",
+      "repository": null,
+      "package_name": null,
+      "target_resource": "local-demo-resource",
+      "marker_name": "marker-001",
+      "authorization_decision": "ALLOW",
+      "outcome": "SUCCESS",
+      "notes": "banking-reader is authorized to create demo markers on local-demo-resource. Policy entry: (banking-reader, create_demo_marker, local-demo-resource) -> ALLOW. Marker written to demo_resources/marker-001.txt."
+    },
+    {
+      "event_id": "evt-004",
+      "timestamp": "2025-01-01T10:03:00Z",
+      "agent_id": "banking-reader",
+      "user_id": null,
+      "tool": "publish_package",
+      "action": "publish_package",
+      "repository": "fake-artifactory-local",
+      "package_name": null,
+      "target_resource": "fake-artifactory-local",
+      "authorization_decision": "DENY",
+      "outcome": "BLOCKED",
+      "notes": "banking-reader is NOT authorized to publish. No matching ALLOW rule exists (deny-by-default). Fake Artifactory was NOT called. This represents a cross-agent privilege escalation attempt that the policy correctly blocks."
+    },
+    {
+      "event_id": "evt-005",
+      "timestamp": "2025-01-01T10:04:00Z",
+      "agent_id": "banking-publisher",
+      "user_id": null,
+      "tool": "create_demo_marker",
+      "action": "create_demo_marker",
+      "repository": null,
+      "package_name": null,
+      "target_resource": "local-demo-resource",
+      "marker_name": null,
+      "authorization_decision": "DENY",
+      "outcome": "BLOCKED",
+      "notes": "banking-publisher is NOT authorized to create demo markers. No matching ALLOW rule exists (deny-by-default). Filesystem was NOT touched. This represents a cross-agent privilege escalation attempt that the policy correctly blocks."
+    }
+  ],
+
+  "sender_identity_disclaimer": {
+    "_important": "The 'sender' field inside a published package payload (e.g. {\"sender\": \"banking-publisher\", ...}) is CLAIMED identity only. It is a data field asserted by the publisher inside the package content. It is NOT cryptographically authenticated. There is no signature, certificate, or key-based proof that the payload was produced by banking-publisher. Any agent or process with network access to Fake Artifactory could publish a package claiming sender=banking-publisher. Callers MUST NOT rely on this field for security-critical decisions without additional out-of-band authentication.",
+    "claimed_identity_field": "package.content.sender",
+    "claimed_value": "banking-publisher",
+    "authentication_method": "NONE — data assertion only",
+    "cryptographic_proof": false,
+    "trust_level": "UNTRUSTED_CLAIMED_DATA"
+  },
+
+  "relationships": [
+    {
+      "subject": "banking-publisher",
+      "predicate": "PUBLISHES_TO",
+      "object": "fake-artifactory-local",
+      "description": "banking-publisher is the only agent authorized (by policy) to write packages to fake-artifactory-local. This relationship is enforced by PublishGateway + authorization_policy.py.",
+      "evidence_event_ids": ["evt-001"]
+    },
+    {
+      "subject": "fake-artifactory-local",
+      "predicate": "CONTAINS",
+      "object": "agent-request",
+      "description": "The package named 'agent-request' resides in fake-artifactory-local after a successful publish_package operation. This is the artifact through which banking-publisher indirectly requests action from banking-reader.",
+      "evidence_event_ids": ["evt-001", "evt-002"]
+    },
+    {
+      "subject": "banking-reader",
+      "predicate": "READS_FROM",
+      "object": "fake-artifactory-local",
+      "description": "banking-reader is the only agent authorized (by policy) to retrieve packages from fake-artifactory-local. This relationship is enforced by ReadGateway + authorization_policy.py.",
+      "evidence_event_ids": ["evt-002"]
+    },
+    {
+      "subject": "banking-reader",
+      "predicate": "CREATES",
+      "object": "local-demo-resource",
+      "description": "banking-reader is the only agent authorized (by policy) to create demo markers on local-demo-resource. This relationship is enforced by DemoMarkerGateway + authorization_policy.py.",
+      "evidence_event_ids": ["evt-003"]
+    }
+  ],
+
+  "agent_definitions": [
+    {
+      "agent_id": "banking-publisher",
+      "description": "Publishes packages to fake-artifactory-local. Lab Agent A (Phase 2 Step 2+).",
+      "source_file": "agent/publisher_agent.py",
+      "allowed_capabilities": [
+        {
+          "tool": "publish_package",
+          "repository": "fake-artifactory-local",
+          "authorization_decision": "ALLOW",
+          "policy_source": "gateway/authorization_policy.py"
+        }
+      ],
+      "denied_capabilities": [
+        {
+          "tool": "read_package",
+          "repository": "fake-artifactory-local",
+          "authorization_decision": "DENY"
+        },
+        {
+          "tool": "create_demo_marker",
+          "target": "local-demo-resource",
+          "authorization_decision": "DENY"
+        }
+      ]
+    },
+    {
+      "agent_id": "banking-reader",
+      "description": "Reads packages from fake-artifactory-local and creates demo markers on local-demo-resource. Lab Agent B (Phase 2 Step 3+).",
+      "source_file": "agent/reader_agent.py",
+      "allowed_capabilities": [
+        {
+          "tool": "read_package",
+          "repository": "fake-artifactory-local",
+          "authorization_decision": "ALLOW",
+          "policy_source": "gateway/authorization_policy.py"
+        },
+        {
+          "tool": "create_demo_marker",
+          "target": "local-demo-resource",
+          "authorization_decision": "ALLOW",
+          "policy_source": "gateway/authorization_policy.py"
+        }
+      ],
+      "denied_capabilities": [
+        {
+          "tool": "publish_package",
+          "repository": "fake-artifactory-local",
+          "authorization_decision": "DENY"
+        }
+      ]
+    }
+  ],
+
+  "workflow_chain": {
+    "description": "The safe Phase 2 workflow from publish through to demo marker creation.",
+    "steps": [
+      {
+        "step": 1,
+        "actor": "banking-publisher",
+        "tool": "publish_package",
+        "target": "fake-artifactory-local",
+        "package": "agent-request",
+        "gateway": "PublishGateway",
+        "evidence_event_id": "evt-001"
+      },
+      {
+        "step": 2,
+        "actor": "banking-reader",
+        "tool": "read_package",
+        "target": "fake-artifactory-local",
+        "package": "agent-request",
+        "gateway": "ReadGateway",
+        "evidence_event_id": "evt-002"
+      },
+      {
+        "step": 3,
+        "actor": "banking-reader",
+        "tool": "create_demo_marker",
+        "target": "local-demo-resource",
+        "marker_name": "marker-001",
+        "gateway": "DemoMarkerGateway",
+        "evidence_event_id": "evt-003"
+      }
+    ]
+  },
+
+  "concert_experiment_metadata": {
+    "_purpose": "This bundle is intended for a controlled experiment to determine: (1) what IBM Concert discovers natively from the lab environment; (2) what happens when additional agent telemetry/evidence is supplied to Concert; (3) whether supplied evidence creates or influences relationships/topology in Concert; (4) whether supplied evidence can participate in Concert prioritization or attack-path analysis. IMPORTANT: None of these capabilities are claimed or assumed to exist in Concert at the time this bundle was created. This is an open experiment.",
+    "experiment_phase": "Phase 2 Step 5",
+    "lab": "agent-security-lab",
+    "evidence_type": "synthetic_telemetry",
+    "contains_secrets": false,
+    "contains_credentials": false,
+    "contains_tokens": false,
+    "contains_cookies": false,
+    "contains_real_customer_data": false,
+    "external_urls": [],
+    "localhost_references": [
+      "http://127.0.0.1:8081 (fake-artifactory-local — referenced in gateway source only, not in this document)"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+# Python runtime artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Demo runtime generated files
+demo_resources/
+
+# Fake Artifactory runtime packages (generated at runtime)
+fake_artifactory/packages/
+
+# Logs
+*.log
+logs/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Secrets / environment
+.env
+*.env
+*.pem
+*.key
